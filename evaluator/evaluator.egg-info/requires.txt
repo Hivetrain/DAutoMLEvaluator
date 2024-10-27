@@ -1,0 +1,6 @@
+deap
+matplotlib
+numpy
+torch
+torchvision
+tqdm
