@@ -88,7 +88,7 @@ class LossFunctionEvaluator:
             }
             self.results_handler.process_evaluation_metrics(
                 name=os.path.basename(file_path),
-                metrics=,
+                metrics=metrics,
                 function_str=str(individual),
                 total_batches=len(train_loader),
                 epochs=self.config.epochs
