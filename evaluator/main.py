@@ -59,26 +59,40 @@ class LossFunctionEvaluator:
         val_loader: DataLoader
     ) -> Dict[str, Any]:
         """Evaluate a single loss function from a JSON file."""
-        torch.manual_seed(self.config.seed)
-        individual, loss_function = load_individual_from_json(
-            filename=file_path,
-            pset=self.pset,
-            toolbox=self.toolbox
-        )
-        
-        model = ModelFactory.create_mnist_model(self.config)
-        metrics = self.evaluator.train_and_evaluate(
-            model, loss_function, train_loader, val_loader
-        )
-        
-        # Add results processing:
-        self.results_handler.process_evaluation_metrics(
-            name=os.path.basename(file_path),
-            metrics=metrics,
-            function_str=str(individual),
-            total_batches=len(train_loader),
-            epochs=self.config.epochs
-        )
+        try:
+            torch.manual_seed(self.config.seed)
+            individual, loss_function = load_individual_from_json(
+                filename=file_path,
+                pset=self.pset,
+                toolbox=self.toolbox
+            )
+            
+            model = ModelFactory.create_mnist_model(self.config)
+            metrics = self.evaluator.train_and_evaluate(
+                model, loss_function, train_loader, val_loader
+            )
+            
+            # Add results processing:
+            self.results_handler.process_evaluation_metrics(
+                name=os.path.basename(file_path),
+                metrics=metrics,
+                function_str=str(individual),
+                total_batches=len(train_loader),
+                epochs=self.config.epochs
+            )
+        except:
+            metrics = {
+                'train_loss': [99],
+                'val_accuracy': [0.0],
+                'batch_numbers': [1]
+            }
+            self.results_handler.process_evaluation_metrics(
+                name=os.path.basename(file_path),
+                metrics=,
+                function_str=str(individual),
+                total_batches=len(train_loader),
+                epochs=self.config.epochs
+            )
 
 
     def _evaluate_baseline_losses(
