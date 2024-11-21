@@ -14,7 +14,7 @@ from evaluator.visualization.visualizer import Visualizer
 from evaluator.utils.deap_utils import DeapToolboxFactory
 from evaluator.utils.results_handler import ResultsHandler
 from dml.gene_io import load_individual_from_json
-
+from evaluator.models.model_factory import get_model_for_dataset
 
 from tqdm import tqdm 
 
@@ -37,10 +37,11 @@ class LossFunctionEvaluator:
                     self._evaluate_single_loss(
                         os.path.join(json_folder, filename),
                         train_loader,
-                        val_loader
+                        val_loader,
+                        dataset
                     )
 
-            self._evaluate_baseline_losses(train_loader, val_loader)
+            self._evaluate_baseline_losses(train_loader, val_loader, dataset)
         
             # Update visualization call:
             
@@ -57,7 +58,8 @@ class LossFunctionEvaluator:
         self,
         file_path: str,
         train_loader: DataLoader,
-        val_loader: DataLoader
+        val_loader: DataLoader,
+        dataset: str
     ) -> Dict[str, Any]:
         """Evaluate a single loss function from a JSON file."""
         try:
@@ -68,7 +70,7 @@ class LossFunctionEvaluator:
                 toolbox=self.toolbox
             )
             
-            model = ModelFactory.create_mnist_model(self.config)
+            model = get_model_for_dataset(dataset)
             metrics = self.evaluator.train_and_evaluate(
                 model, loss_function, train_loader, val_loader
             )
@@ -99,7 +101,8 @@ class LossFunctionEvaluator:
     def _evaluate_baseline_losses(
         self,
         train_loader: DataLoader,
-        val_loader: DataLoader
+        val_loader: DataLoader,
+        dataset: str
     ) -> List[Dict[str, Any]]:
         """Evaluate baseline loss functions (MSE and Cross-Entropy)."""
         baseline_losses = {
@@ -109,7 +112,7 @@ class LossFunctionEvaluator:
 
         for loss_name, loss_fn in baseline_losses.items():
             torch.manual_seed(self.config.seed)
-            model = ModelFactory.create_mnist_model(self.config)
+            model = get_model_for_dataset(dataset)
             
             if loss_name == 'MSE':
                 loss_function = lambda outputs, targets: loss_fn(outputs, targets)
