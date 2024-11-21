@@ -31,7 +31,7 @@ class LossFunctionEvaluator:
         for dataset in self.config.dataset_names:
             train_loader, val_loader = self.data_manager.load_data(dataset)
 
-            for filename in os.listdir(json_folder):
+            for filename in tqdm(os.listdir(json_folder)):
                 if filename.endswith('.json'):
                     self._evaluate_single_loss(
                         os.path.join(json_folder, filename),
