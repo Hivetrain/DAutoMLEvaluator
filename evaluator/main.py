@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader
 
 from evaluator.eval_config import TrainingConfig
 from evaluator.data.data_manager import DataManager
-from evaluator.models.model_factory import ModelFactory
 from evaluator.evaluation.loss_evaluator import LossEvaluator
 from evaluator.visualization.visualizer import Visualizer
 from evaluator.utils.deap_utils import DeapToolboxFactory
