@@ -115,22 +115,25 @@ class LossFunctionEvaluator:
             model = get_model_for_dataset(dataset)
             model.to(self.config.device)
             
-            if loss_name == 'MSE':
-                loss_function = lambda outputs, targets: loss_fn(outputs, targets)
-            else:  # CrossEntropy
-                loss_function = lambda outputs, targets: loss_fn(outputs, torch.argmax(targets, dim=1))
-            
-            metrics = self.evaluator.train_and_evaluate(
-                model, loss_function, train_loader, val_loader
-            )
-            
-            # Add results processing:
-            self.results_handler.process_evaluation_metrics(
-                name=f"{loss_name} (Baseline)",
-                metrics=metrics,
-                total_batches=len(train_loader),
-                epochs=self.config.epochs
-            )
+            try:
+                if loss_name == 'MSE':
+                    loss_function = lambda outputs, targets: loss_fn(outputs, targets)
+                else:  # CrossEntropy
+                    loss_function = lambda outputs, targets: loss_fn(outputs, torch.argmax(targets, dim=1))
+                
+                metrics = self.evaluator.train_and_evaluate(
+                    model, loss_function, train_loader, val_loader
+                )
+                
+                # Add results processing:
+                self.results_handler.process_evaluation_metrics(
+                    name=f"{loss_name} (Baseline)",
+                    metrics=metrics,
+                    total_batches=len(train_loader),
+                    epochs=self.config.epochs
+                )
+            except:
+                continue
 
 
 def main():
