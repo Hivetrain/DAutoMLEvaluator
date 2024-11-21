@@ -70,6 +70,7 @@ class LossFunctionEvaluator:
             )
             
             model = get_model_for_dataset(dataset)
+            model.to(self.config.device)
             metrics = self.evaluator.train_and_evaluate(
                 model, loss_function, train_loader, val_loader
             )
@@ -112,6 +113,7 @@ class LossFunctionEvaluator:
         for loss_name, loss_fn in baseline_losses.items():
             torch.manual_seed(self.config.seed)
             model = get_model_for_dataset(dataset)
+            model.to(self.config.device)
             
             if loss_name == 'MSE':
                 loss_function = lambda outputs, targets: loss_fn(outputs, targets)
