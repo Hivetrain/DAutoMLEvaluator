@@ -83,7 +83,8 @@ class LossFunctionEvaluator:
                 total_batches=len(train_loader),
                 epochs=self.config.epochs
             )
-        except:
+        except Exception as e:
+            print(e)
             metrics = {
                 'train_loss': [99],
                 'val_accuracy': [0.0],
