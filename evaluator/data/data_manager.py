@@ -3,6 +3,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 from typing import Tuple
 from evaluator.eval_config import TrainingConfig
+from evaluator.data.data import load_datasets
 
 class DataManager:
     def __init__(self, config: TrainingConfig):
@@ -12,23 +13,9 @@ class DataManager:
             transforms.Normalize((0.1307,), (0.3081,))
         ])
 
-    def load_data(self) -> Tuple[DataLoader, DataLoader]:
+    def load_data(self, dataset: str = "mnist") -> Tuple[DataLoader, DataLoader]:
         """Load and return train and validation dataloaders."""
-        train_data = datasets.MNIST('../data', train=True, download=True, transform=self.transform)
-        val_data = datasets.MNIST('../data', train=False, transform=self.transform)
-        
-        train_loader = DataLoader(
-            train_data,
-            batch_size=self.config.batch_size,
-            shuffle=True,
-            generator=torch.Generator().manual_seed(self.config.seed)
-        )
-        
-        val_loader = DataLoader(
-            val_data,
-            batch_size=self.config.batch_size,
-            shuffle=False,
-            generator=torch.Generator().manual_seed(self.config.seed)
-        )
-        
-        return train_loader, val_loader
+
+        dataset_spec = load_datasets([dataset])
+            
+        return dataset_spec.train_loader, dataset_spec.val_loader

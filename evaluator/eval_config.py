@@ -10,3 +10,4 @@ class TrainingConfig:
     max_batches: int = 90
     validate_every: int = 10
     learning_rate: float = 0.001
+    dataset_names = ["cifar10", "mnist"]

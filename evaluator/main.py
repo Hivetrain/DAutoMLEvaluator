@@ -29,28 +29,29 @@ class LossFunctionEvaluator:
 
     def evaluate_loss_functions(self, json_folder: str) -> None:
         """Evaluate multiple loss functions from JSON files."""
-        train_loader, val_loader = self.data_manager.load_data()
+        for dataset in self.config.dataset_names:
+            train_loader, val_loader = self.data_manager.load_data(dataset)
 
-        for filename in os.listdir(json_folder):
-            if filename.endswith('.json'):
-                self._evaluate_single_loss(
-                    os.path.join(json_folder, filename),
-                    train_loader,
-                    val_loader
-                )
+            for filename in os.listdir(json_folder):
+                if filename.endswith('.json'):
+                    self._evaluate_single_loss(
+                        os.path.join(json_folder, filename),
+                        train_loader,
+                        val_loader
+                    )
 
-        self._evaluate_baseline_losses(train_loader, val_loader)
+            self._evaluate_baseline_losses(train_loader, val_loader)
         
-        # Update visualization call:
-        
-        self.visualizer.create_plots(
-            [{"filename": result.name, "validation_accuracy": result.accuracy_progression} 
-             for result in self.results_handler.results]
-        )
-        
-        # Add JSON output generation:
-        output_file = f"evaluation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        self.results_handler.generate_json_output(output_file)
+            # Update visualization call:
+            
+            self.visualizer.create_plots(
+                [{"filename": result.name, "validation_accuracy": result.accuracy_progression} 
+                for result in self.results_handler.results]
+            )
+            
+            # Add JSON output generation:
+            output_file = f"evaluation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            self.results_handler.generate_json_output(output_file)
 
     def _evaluate_single_loss(
         self,
