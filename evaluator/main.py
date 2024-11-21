@@ -106,7 +106,7 @@ class LossFunctionEvaluator:
     ) -> List[Dict[str, Any]]:
         """Evaluate baseline loss functions (MSE and Cross-Entropy)."""
         baseline_losses = {
-            'MSE': torch.nn.MSELoss(),
+            #'MSE': torch.nn.MSELoss(),
             'CrossEntropy': torch.nn.CrossEntropyLoss()
         }
 
