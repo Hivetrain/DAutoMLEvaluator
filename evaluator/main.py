@@ -63,7 +63,7 @@ class LossFunctionEvaluator:
         """Evaluate a single loss function from a JSON file."""
         try:
             torch.manual_seed(self.config.seed)
-            individual, loss_function = load_individual_from_json(
+            individual, loss_function, loss_str = load_individual_from_json(
                 filename=file_path,
                 pset=self.pset,
                 toolbox=self.toolbox
