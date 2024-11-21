@@ -16,6 +16,6 @@ class DataManager:
     def load_data(self, dataset: str = "mnist") -> Tuple[DataLoader, DataLoader]:
         """Load and return train and validation dataloaders."""
 
-        dataset_spec = load_datasets([dataset])
+        dataset_spec = load_datasets([dataset])[0]
             
         return dataset_spec.train_loader, dataset_spec.val_loader
