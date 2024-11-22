@@ -106,11 +106,13 @@ class LossEvaluator:
         total = 0
         
         with torch.no_grad():
-            for val_inputs, val_targets in val_loader:
+            for idx, (val_inputs, val_targets) in tqdm(enumerate(val_loader)):
                 val_inputs = val_inputs.to(self.config.device)
                 val_targets = val_targets.to(self.config.device)
                 val_outputs = model(val_inputs)
                 if len(val_outputs.shape) == 3:
+                    if idx > self.config.llm_validation_steps: #max validation config
+                        break
                     _, predicted = val_outputs.max(dim=-1)
                     total += val_targets.numel()  # Count all elements
                     correct += predicted.eq(val_targets).sum().item()

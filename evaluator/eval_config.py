@@ -11,3 +11,4 @@ class TrainingConfig:
     validate_every: int = 10
     learning_rate: float = 0.001
     dataset_names = ["shakespeare", "cifar10"]
+    llm_validation_steps = 50
