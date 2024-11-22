@@ -29,7 +29,8 @@ class LossEvaluator:
         model: torch.nn.Module,
         loss_function: Callable,
         train_loader: DataLoader,
-        val_loader: DataLoader
+        val_loader: DataLoader, 
+        num_classes: int = 10
     ) -> Dict[str, List[float]]:
         """Train the model and evaluate its performance."""
         metrics = {
@@ -51,7 +52,7 @@ class LossEvaluator:
                     
                     metrics = self._training_step(
                         model, loss_function, optimizer,
-                        inputs, targets, metrics, batch_counter
+                        inputs, targets, metrics, batch_counter, num_classes
                     )
                     
                     if batch_counter % self.config.validate_every == 0:
@@ -75,7 +76,8 @@ class LossEvaluator:
         inputs: torch.Tensor,
         targets: torch.Tensor,
         metrics: Dict[str, List[float]],
-        batch_counter: int
+        batch_counter: int,
+        num_classes: int = 10
     ) -> Dict[str, List[float]]:
         """Perform a single training step."""
         inputs = inputs.to(self.config.device)
@@ -83,7 +85,7 @@ class LossEvaluator:
         
         optimizer.zero_grad()
         outputs = model(inputs)
-        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=10).float()
+        targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=num_classes).float()
         loss = self.safe_evaluate(loss_function, outputs, targets_one_hot)
         loss.backward()
         optimizer.step()
