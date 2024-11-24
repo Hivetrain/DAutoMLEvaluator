@@ -7,8 +7,8 @@ class TrainingConfig:
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
     batch_size: int = 64
     epochs: int = 1
-    max_batches: int = 90
-    validate_every: int = 10
+    max_batches: int = 3
+    validate_every: int = 1
     learning_rate: float = 0.001
-    dataset_names = ["shakespeare", "cifar10"]
-    llm_validation_steps = 50
+    dataset_names = ["shakespeare"]
+    llm_validation_steps = 1

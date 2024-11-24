@@ -112,7 +112,7 @@ class LossFunctionEvaluator:
     ) -> List[Dict[str, Any]]:
         """Evaluate baseline loss functions (MSE and Cross-Entropy)."""
         baseline_losses = {
-            #'MSE': torch.nn.MSELoss(),
+            'MSE': torch.nn.MSELoss(),
             'CrossEntropy': torch.nn.CrossEntropyLoss()
         }
 
@@ -121,25 +121,31 @@ class LossFunctionEvaluator:
             model = get_model_for_dataset(dataset)
             model.to(self.config.device)
             
-            try:
-                if loss_name == 'MSE':
-                    loss_function = lambda outputs, targets: loss_fn(outputs, targets)
-                else:  # CrossEntropy
-                    loss_function = lambda outputs, targets: loss_fn(outputs, torch.argmax(targets, dim=1))
-                
+            #try:
+            if loss_name == 'MSE':
+                loss_function = lambda outputs, targets: loss_fn(outputs, targets)
+            else:  # CrossEntropy
+                loss_function = torch.nn.CrossEntropyLoss()
+
+            if dataset == "shakespeare":
+                metrics = self.evaluator.train_and_evaluate(
+                    model, loss_function, train_loader, val_loader, num_classes=85
+                )
+            else:
                 metrics = self.evaluator.train_and_evaluate(
                     model, loss_function, train_loader, val_loader
                 )
-                
-                # Add results processing:
-                self.results_handler.process_evaluation_metrics(
-                    name=f"{loss_name} (Baseline)",
-                    metrics=metrics,
-                    total_batches=len(train_loader),
-                    epochs=self.config.epochs
-                )
-            except:
-                continue
+
+            
+            # Add results processing:
+            self.results_handler.process_evaluation_metrics(
+                name=f"{loss_name} (Baseline)",
+                metrics=metrics,
+                total_batches=len(train_loader),
+                epochs=self.config.epochs
+            )
+            # except:
+            #     continue
 
 
 def main():

@@ -86,7 +86,10 @@ class LossEvaluator:
         optimizer.zero_grad()
         outputs = model(inputs)
         targets_one_hot = torch.nn.functional.one_hot(targets, num_classes=num_classes).float()
-        loss = self.safe_evaluate(loss_function, outputs, targets_one_hot)
+        try:
+            loss = self.safe_evaluate(loss_function, outputs, targets_one_hot)
+        except:
+            breakpoint()
         loss.backward()
         optimizer.step()
         
