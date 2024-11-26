@@ -43,7 +43,7 @@ class LossFunctionEvaluator:
             "population", tools.initRepeat, list, self.toolbox.individual
         )
         self.toolbox.register("compile", gp.compile, pset=self.pset)
-        self.toolbox.register("evaluate", self.evaluate_individual)
+        #self.toolbox.register("evaluate", self.evaluate_individual)
         self.toolbox.register("select", tools.selTournament, tournsize=3)
         self.toolbox.register("mate", gp.cxOnePoint)
         self.toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
