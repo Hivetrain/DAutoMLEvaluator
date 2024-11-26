@@ -12,7 +12,9 @@ from evaluator.evaluation.loss_evaluator import LossEvaluator
 from evaluator.visualization.visualizer import Visualizer
 from evaluator.utils.deap_utils import DeapToolboxFactory
 from evaluator.utils.results_handler import ResultsHandler
+from deap import base, creator, gp, tools
 from dml.gene_io import load_individual_from_json
+from dml.ops import create_pset, create_pset_validator
 from evaluator.models.model_factory import get_model_for_dataset
 
 from tqdm import tqdm 
@@ -23,8 +25,31 @@ class LossFunctionEvaluator:
         self.data_manager = DataManager(config)
         self.evaluator = LossEvaluator(config)
         self.visualizer = Visualizer()
-        self.toolbox, self.pset = DeapToolboxFactory.create_toolbox()
         self.results_handler = ResultsHandler()  # Add this line
+        self.initialize_deap()
+
+    def initialize_deap(self):
+        self.toolbox = base.Toolbox()
+        self.pset = create_pset_validator()
+
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
+
+        self.toolbox.register("expr", gp.genHalfAndHalf, pset=self.pset, min_=1, max_=3)
+        self.toolbox.register(
+            "individual", tools.initIterate, creator.Individual, self.toolbox.expr
+        )
+        self.toolbox.register(
+            "population", tools.initRepeat, list, self.toolbox.individual
+        )
+        self.toolbox.register("compile", gp.compile, pset=self.pset)
+        self.toolbox.register("evaluate", self.evaluate_individual)
+        self.toolbox.register("select", tools.selTournament, tournsize=3)
+        self.toolbox.register("mate", gp.cxOnePoint)
+        self.toolbox.register("expr_mut", gp.genFull, min_=0, max_=2)
+        self.toolbox.register(
+            "mutate", gp.mutUniform, expr=self.toolbox.expr_mut, pset=self.pset
+        )
 
     def evaluate_loss_functions(self, json_folder: str) -> None:
         """Evaluate multiple loss functions from JSON files."""
