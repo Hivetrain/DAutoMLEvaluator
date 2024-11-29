@@ -110,6 +110,7 @@ class LossEvaluator:
         model.eval()
         correct = 0
         total = 0
+        total_loss = 0.0
         
         with torch.no_grad():
             for idx, (val_inputs, val_targets) in tqdm(enumerate(val_loader)):
