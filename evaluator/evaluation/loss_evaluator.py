@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from typing import Dict, List, Callable
 from tqdm import tqdm
@@ -30,7 +31,8 @@ class LossEvaluator:
         loss_function: Callable,
         train_loader: DataLoader,
         val_loader: DataLoader, 
-        num_classes: int = 10
+        num_classes: int = 10,
+        metric_type: str = "loss"
     ) -> Dict[str, List[float]]:
         """Train the model and evaluate its performance."""
         metrics = {
@@ -57,7 +59,7 @@ class LossEvaluator:
                     
                     if batch_counter % self.config.validate_every == 0:
                         metrics = self._validation_step(
-                            model, val_loader, metrics, batch_counter
+                            model, val_loader, metrics, batch_counter, metric_type
                         )
                         pbar.set_postfix({
                             'Loss': f"{metrics['train_loss'][-1]:.4f}",
@@ -101,7 +103,8 @@ class LossEvaluator:
         model: torch.nn.Module,
         val_loader: DataLoader,
         metrics: Dict[str, List[float]],
-        batch_counter: int
+        batch_counter: int,
+        metric_type: str = 'loss'  # New parameter to choose metric type
     ) -> Dict[str, List[float]]:
         """Perform validation and update metrics."""
         model.eval()
@@ -119,13 +122,26 @@ class LossEvaluator:
                     _, predicted = val_outputs.max(dim=-1)
                     total += val_targets.numel()  # Count all elements
                     correct += predicted.eq(val_targets).sum().item()
+
+                    loss = F.cross_entropy(
+                    val_outputs.view(-1, val_outputs.size(-1)), 
+                    val_targets.view(-1)
+                    )
+                    total_loss += loss.item()
                 else:
                     _, predicted = val_outputs.max(1)
                     total += val_targets.size(0)
                     correct += predicted.eq(val_targets).sum().item()
+
+                    loss = F.cross_entropy(val_outputs, val_targets)
+                    total_loss += loss.item()
         
         accuracy = correct / total
-        metrics['val_accuracy'].append(accuracy)
+        avg_loss = total_loss / len(val_loader)
+        if metric_type == 'accuracy':
+            metrics['val_accuracy'].append(accuracy)
+        else:
+            metrics['val_accuracy'].append(loss) #FIXME Hack 
         metrics['batch_numbers'].append(batch_counter)
         model.train()
         return metrics

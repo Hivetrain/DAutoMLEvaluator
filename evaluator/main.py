@@ -98,11 +98,11 @@ class LossFunctionEvaluator:
             model.to(self.config.device)
             if dataset == "shakespeare":
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, num_classes=85
+                    model, loss_function, train_loader, val_loader, num_classes=85, metric_type="loss"
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader
+                    model, loss_function, train_loader, val_loader, metric_type="loss"
                 )
             
             # Add results processing:
@@ -154,11 +154,11 @@ class LossFunctionEvaluator:
 
             if dataset == "shakespeare":
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, num_classes=85
+                    model, loss_function, train_loader, val_loader, num_classes=85, metric_type="loss"
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader
+                    model, loss_function, train_loader, val_loader, metric_type="loss"
                 )
 
             
