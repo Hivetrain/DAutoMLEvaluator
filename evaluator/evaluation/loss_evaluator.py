@@ -111,7 +111,7 @@ class LossEvaluator:
         correct = 0
         total = 0
         total_loss = 0.0
-        
+
         with torch.no_grad():
             for idx, (val_inputs, val_targets) in tqdm(enumerate(val_loader)):
                 val_inputs = val_inputs.to(self.config.device)
@@ -142,7 +142,7 @@ class LossEvaluator:
         if metric_type == 'accuracy':
             metrics['val_accuracy'].append(accuracy)
         else:
-            metrics['val_accuracy'].append(loss) #FIXME Hack 
+            metrics['val_accuracy'].append(avg_loss) #FIXME Hack 
         metrics['batch_numbers'].append(batch_counter)
         model.train()
         return metrics
