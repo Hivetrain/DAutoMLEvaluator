@@ -64,6 +64,26 @@ class EvolvedLoss(torch.nn.Module):
         loss = memory[self.genome.output_addresses[0]]
         return loss
     
+class GPTWrapper(nn.Module):
+    def __init__(self, vocab_size=50257):
+        super().__init__()
+        config = GPT2Config(
+            vocab_size=vocab_size,
+            n_positions=256,     
+            n_ctx=256,          
+            n_embd=32,         
+            n_layer=2,          
+            n_head=2,           
+            n_inner=32,        
+            bos_token_id=50256,
+            eos_token_id=50256,
+        )
+        self.model = GPT2LMHeadModel(config)
+        
+    def forward(self, x):
+        # Return just the logits from the output
+        return self.model(x).logits
+    
 class BabyGPT(nn.Module):
     def __init__(self, vocab_size, embedding_dim=64, hidden_dim=128, num_layers=2, num_heads=2, sequence_length=512, dropout=0.1):
         super().__init__()
@@ -193,25 +213,13 @@ def get_cifar100_model(
     )
 
 def get_fineweb_model(
-    vocab_size: int = 50257,  # GPT-2 vocabulary size
+    vocab_size: int = 50257,
     **kwargs
 ) -> nn.Module:
     """
     Returns a small GPT-2 model suitable for Fineweb dataset
     """
-    config = GPT2Config(
-        vocab_size=vocab_size,
-        n_positions=128,     # Sequence length
-        n_ctx=128,          # Context size
-        n_embd=128,         # Embedding dimension
-        n_layer=4,          # Number of layers
-        n_head=4,           # Number of attention heads
-        n_inner=512,        # Hidden dimension of feedforward layers
-        bos_token_id=50256,
-        eos_token_id=50256,
-    )
-    
-    return GPT2LMHeadModel(config)
+    return GPTWrapper(vocab_size)
 
 # Dictionary mapping dataset names to their model creators
 MODEL_CREATORS = {
