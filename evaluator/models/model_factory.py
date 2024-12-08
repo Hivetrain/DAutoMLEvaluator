@@ -4,6 +4,9 @@ from evaluator.eval_config import TrainingConfig
 import torch.nn as nn
 import torch 
 
+from transformers import GPT2Config, GPT2LMHeadModel
+
+
 class BaselineNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
@@ -191,26 +194,24 @@ def get_cifar100_model(
 
 def get_fineweb_model(
     vocab_size: int = 50257,  # GPT-2 vocabulary size
-    embed_size: int = 384,
-    num_heads: int = 6,
-    num_layers: int = 6,
-    hidden_dim: int = 128,
-    sequence_length: int = 512,
-    dropout: float = 0.1,
     **kwargs
 ) -> nn.Module:
     """
-    Returns a transformer model suitable for Fineweb dataset
+    Returns a small GPT-2 model suitable for Fineweb dataset
     """
-    return BabyGPT(
+    config = GPT2Config(
         vocab_size=vocab_size,
-        embedding_dim=embed_size,
-        hidden_dim=hidden_dim,
-        num_heads=num_heads,
-        num_layers=num_layers,
-        sequence_length=sequence_length,
-        dropout=dropout
+        n_positions=128,     # Sequence length
+        n_ctx=128,          # Context size
+        n_embd=128,         # Embedding dimension
+        n_layer=4,          # Number of layers
+        n_head=4,           # Number of attention heads
+        n_inner=512,        # Hidden dimension of feedforward layers
+        bos_token_id=50256,
+        eos_token_id=50256,
     )
+    
+    return GPT2LMHeadModel(config)
 
 # Dictionary mapping dataset names to their model creators
 MODEL_CREATORS = {
