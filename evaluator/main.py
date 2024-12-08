@@ -16,6 +16,7 @@ from deap import base, creator, gp, tools
 from dml.gene_io import load_individual_from_json
 from dml.ops import create_pset, create_pset_validator
 from evaluator.models.model_factory import get_model_for_dataset
+from evaluator.models.losses import batch_loss
 
 from tqdm import tqdm 
 
@@ -56,14 +57,14 @@ class LossFunctionEvaluator:
         for dataset in self.config.dataset_names:
             train_loader, val_loader = self.data_manager.load_data(dataset)
 
-            for filename in tqdm(os.listdir(json_folder)):
-                if filename.endswith('.json'):
-                    self._evaluate_single_loss(
-                        os.path.join(json_folder, filename),
-                        train_loader,
-                        val_loader,
-                        dataset
-                    )
+            # for filename in tqdm(os.listdir(json_folder)):
+            #     if filename.endswith('.json'):
+            #         self._evaluate_single_loss(
+            #             os.path.join(json_folder, filename),
+            #             train_loader,
+            #             val_loader,
+            #             dataset
+            #         )
 
             self._evaluate_baseline_losses(train_loader, val_loader, dataset)
         
@@ -142,7 +143,8 @@ class LossFunctionEvaluator:
         """Evaluate baseline loss functions (MSE and Cross-Entropy)."""
         baseline_losses = {
             'MSE': torch.nn.MSELoss(),
-            'CrossEntropy': torch.nn.CrossEntropyLoss()
+            'CrossEntropy': torch.nn.CrossEntropyLoss(),
+            "evolved": batch_loss
         }
 
         for loss_name, loss_fn in baseline_losses.items():

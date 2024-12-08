@@ -5,10 +5,10 @@ import torch
 class TrainingConfig:
     seed: int = 53
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
-    batch_size: int = 64
+    batch_size: int = 1
     epochs: int = 1
     max_batches: int = 90
     validate_every: int = 10
     learning_rate: float = 0.001
-    dataset_names = ["shakespeare"]
+    dataset_names = ["fineweb"]
     llm_validation_steps = 50
