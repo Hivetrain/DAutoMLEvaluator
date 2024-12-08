@@ -100,7 +100,7 @@ class LossFunctionEvaluator:
                 metrics = self.evaluator.train_and_evaluate(
                     model, loss_function, train_loader, val_loader, num_classes=85, metric_type="loss"
                 )
-            elif dataset == "shakespeare":
+            elif dataset == "fineweb":
                 metrics = self.evaluator.train_and_evaluate(
                     model, loss_function, train_loader, val_loader, num_classes=50257, metric_type="loss"
                 )
