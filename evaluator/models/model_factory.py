@@ -189,13 +189,37 @@ def get_cifar100_model(
         nn.Linear(hidden_size, 100)
     )
 
+def get_fineweb_model(
+    vocab_size: int = 50257,  # GPT-2 vocabulary size
+    embed_size: int = 384,
+    num_heads: int = 6,
+    num_layers: int = 6,
+    hidden_dim: int = 128,
+    sequence_length: int = 512,
+    dropout: float = 0.1,
+    **kwargs
+) -> nn.Module:
+    """
+    Returns a transformer model suitable for Fineweb dataset
+    """
+    return BabyGPT(
+        vocab_size=vocab_size,
+        embedding_dim=embed_size,
+        hidden_dim=hidden_dim,
+        num_heads=num_heads,
+        num_layers=num_layers,
+        sequence_length=sequence_length,
+        dropout=dropout
+    )
+
 # Dictionary mapping dataset names to their model creators
 MODEL_CREATORS = {
     'mnist': get_mnist_model,
     'cifar10': get_cifar_model,
     'cifar100': get_cifar100_model,
     'imagenet': get_imagenet_model,
-    'shakespeare': get_shakespeare_model
+    'shakespeare': get_shakespeare_model,
+    'fineweb': get_fineweb_model
 
 }
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import numpy as np
 import requests
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -241,6 +242,75 @@ def get_shakespeare_loaders(
     
     return train_loader, val_loader, train_dataset.vocab_size
 
+class FinewebDataset(Dataset):
+    def __init__(self, data_dir: str, max_tokens: int = 33_000_000, seq_length: int = 256, train: bool = True):
+        """
+        Args:
+            data_dir: Directory containing the fineweb binary files
+            max_tokens: Maximum number of tokens to load (default 33M)
+            seq_length: Length of sequences to return
+            train: If True, load training data, else load validation data
+        """
+        self.seq_length = seq_length
+        
+        # Load the binary data
+        if train:
+            filepath = os.path.join(data_dir, 'fineweb10B', 'fineweb_train_000001.bin')
+        else:
+            filepath = os.path.join(data_dir, 'fineweb10B', 'fineweb_val_000000.bin')
+            
+        # Load only the first max_tokens
+        self.data = np.memmap(filepath, dtype=np.uint16, mode='r')[:max_tokens]
+        
+    def __len__(self):
+        return len(self.data) - self.seq_length - 1
+        
+    def __getitem__(self, idx):
+        chunk = torch.from_numpy(self.data[idx:idx + self.seq_length + 1].astype(np.int64))
+        x = chunk[:-1]
+        y = chunk[1:]
+        return x, y
+
+def get_fineweb_loaders(
+    data_dir: str = './data',
+    batch_size: int = 64,
+    seq_length: int = 256,
+    max_tokens: int = 33_000_000,
+    num_workers: int = 1
+) -> tuple[DataLoader, DataLoader, int]:
+    """
+    Fineweb dataset loaders for language modeling
+    """
+    train_dataset = FinewebDataset(
+        data_dir=data_dir,
+        max_tokens=max_tokens,
+        seq_length=seq_length,
+        train=True
+    )
+    
+    val_dataset = FinewebDataset(
+        data_dir=data_dir,
+        max_tokens=max_tokens // 10,  # Smaller validation set
+        seq_length=seq_length,
+        train=False
+    )
+    
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers
+    )
+    
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers
+    )
+    
+    return train_loader, val_loader, 50257  # GPT-2 vocab size
+
 
 def load_datasets(dataset_names: Union[str, List[str]], batch_size: int = 32) -> List[DatasetSpec]:
     """
@@ -289,6 +359,14 @@ def load_datasets(dataset_names: Union[str, List[str]], batch_size: int = 32) ->
             "input_size": 32,
             "output_size": None,  # Will be set after loading
             "hidden_size": 32,
+            "learning_rate": 3e-4,
+            "weight": 10.0
+        },
+        "fineweb": {
+            "loader": get_fineweb_loaders,
+            "input_size": 256,  # sequence length
+            "output_size": 50257,  # GPT-2 vocab size
+            "hidden_size": 256,
             "learning_rate": 3e-4,
             "weight": 10.0
         }
