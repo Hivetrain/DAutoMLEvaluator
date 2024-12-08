@@ -91,7 +91,8 @@ class LossEvaluator:
         try:
             loss = self.safe_evaluate(loss_function, outputs, targets_one_hot)
         except:
-            breakpoint()
+            pass
+            #breakpoint()
         loss.backward()
         optimizer.step()
         
