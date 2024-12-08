@@ -380,7 +380,7 @@ def load_datasets(dataset_names: Union[str, List[str]], batch_size: int = 32) ->
             
         config = dataset_configs[name]
         
-        if name == "shakespeare":
+        if name in ["shakespeare", "fineweb"]:
             train_loader, val_loader, vocab_size = config["loader"](batch_size=batch_size)
             config["output_size"] = vocab_size
         else:
