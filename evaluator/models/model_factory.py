@@ -6,6 +6,7 @@ import torch
 
 from transformers import GPT2Config, GPT2LMHeadModel
 from evaluator.data.data import load_datasets
+from typing import Tuple
 
 class BaselineNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -127,6 +128,140 @@ class BabyGPT(nn.Module):
         logits = self.fc_out(x)
         return logits
 
+class PatchEmbed(nn.Module):
+    """Split image into patches and embed them."""
+    def __init__(self, img_size: int, patch_size: int, in_chans: int = 3, embed_dim: int = 768):
+        super().__init__()
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.n_patches = (img_size // patch_size) ** 2
+        
+        self.proj = nn.Conv2d(
+            in_chans,
+            embed_dim,
+            kernel_size=patch_size,
+            stride=patch_size
+        )
+
+    def forward(self, x):
+        x = self.proj(x)  # (B, E, H', W')
+        x = x.flatten(2)  # (B, E, N)
+        x = x.transpose(1, 2)  # (B, N, E)
+        return x
+
+class ViT(nn.Module):
+    def __init__(
+        self,
+        img_size: int,
+        patch_size: int,
+        in_chans: int,
+        num_classes: int,
+        embed_dim: int,
+        depth: int,
+        num_heads: int,
+        mlp_ratio: float = 4.0,
+        dropout: float = 0.1
+    ):
+        super().__init__()
+        self.patch_embed = PatchEmbed(
+            img_size=img_size,
+            patch_size=patch_size,
+            in_chans=in_chans,
+            embed_dim=embed_dim
+        )
+        num_patches = self.patch_embed.n_patches
+
+        # Class token and position embeddings
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
+        
+        # Transformer encoder
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=embed_dim,
+            nhead=num_heads,
+            dim_feedforward=int(embed_dim * mlp_ratio),
+            dropout=dropout,
+            batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=depth)
+        
+        # MLP head
+        self.head = nn.Linear(embed_dim, num_classes)
+
+    def forward(self, x):
+        # Patch embedding
+        x = self.patch_embed(x)
+        
+        # Add class token
+        cls_token = self.cls_token.expand(x.shape[0], -1, -1)
+        x = torch.cat((cls_token, x), dim=1)
+        
+        # Add position embeddings
+        x = x + self.pos_embed
+        
+        # Transformer
+        x = self.transformer(x)
+        
+        # MLP head (use [CLS] token)
+        x = self.head(x[:, 0])
+        return x
+
+def get_vit(
+    input_size: Tuple[int, int, int],
+    output_size: int,
+    variant: str = 'base',
+    **kwargs
+) -> nn.Module:
+    """Create a Vision Transformer model.
+    
+    Args:
+        input_size: Tuple of (channels, height, width)
+        output_size: Number of classes
+        variant: 'small', 'base', or 'large'
+    """
+    # ViT configurations following paper specifications
+    configs = {
+        'small': {
+            'patch_size': 16,
+            'embed_dim': 384,
+            'depth': 12,
+            'num_heads': 6,
+        },
+        'base': {
+            'patch_size': 16,
+            'embed_dim': 768,
+            'depth': 12,
+            'num_heads': 12,
+        },
+        'large': {
+            'patch_size': 16,
+            'embed_dim': 1024,
+            'depth': 24,
+            'num_heads': 16,
+        }
+    }
+    
+    if variant not in configs:
+        raise ValueError(f"Unknown ViT variant: {variant}")
+    
+    config = configs[variant]
+    in_chans, height, width = input_size
+    
+    # Ensure image size is compatible with patch size
+    assert height == width, "Image must be square"
+    assert height % config['patch_size'] == 0, f"Image size must be divisible by patch size {config['patch_size']}"
+    
+    return ViT(
+        img_size=height,
+        patch_size=config['patch_size'],
+        in_chans=in_chans,
+        num_classes=output_size,
+        embed_dim=config['embed_dim'],
+        depth=config['depth'],
+        num_heads=config['num_heads'],
+        **kwargs
+    )
+
 
 def get_imagenet_model(
     num_classes: int = 1000,
@@ -214,7 +349,10 @@ ARCHITECTURE_MAP = {
     'mlp': get_mlp,
     'cnn': get_cnn,
     'gpt': get_baby_gpt,
-    'resnet': get_imagenet_model  # Already generalized in original code
+    'resnet': get_imagenet_model,  # Already generalized in original code
+    'vit-small': lambda *args, **kwargs: get_vit(*args, variant='small', **kwargs),
+    'vit-base': lambda *args, **kwargs: get_vit(*args, variant='base', **kwargs),
+    'vit-large': lambda *args, **kwargs: get_vit(*args, variant='large', **kwargs),
 }
 
 def get_model_for_dataset(dataset_name: str, architecture: str = 'mlp', dataset_spec = None, **kwargs) -> nn.Module:
