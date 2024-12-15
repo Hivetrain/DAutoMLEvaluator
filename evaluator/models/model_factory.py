@@ -413,7 +413,7 @@ def get_model_for_dataset(dataset_name: str, architecture: str = 'mlp', dataset_
             hidden_size=dataset_spec.hidden_size,
             **kwargs
         )
-    elif architecture == 'cnn':
+    elif architecture in ['cnn', 'vit-small', 'vit-base', 'vit-large']:
         # Handle case where input_size is a single number
         if isinstance(dataset_spec.input_size, int):
             if dataset_name == 'mnist':
