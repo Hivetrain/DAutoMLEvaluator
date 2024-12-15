@@ -6,7 +6,7 @@ import torch
 
 from transformers import GPT2Config, GPT2LMHeadModel
 from evaluator.data.data import load_datasets
-from typing import Tuple
+from typing import Tuple, Union
 
 class BaselineNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
