@@ -30,8 +30,7 @@ class TrainingConfig:
     learning_rate: float = 0.001
     dataset_names = ["fineweb"]
     architectures = {
-        "cifar10": ["vit-small"],
-        "cifar100": [ "resnet", "vit-small","vit-base" ],
-        "imagenet": [ "resnet", "vit-small","vit-base" ],
+        "cifar100": [ "resnet", "mlp" ],
+        "imagenet": [ "resnet", "mlp" ],
     }
     llm_validation_steps = 50
