@@ -1,6 +1,24 @@
 from dataclasses import dataclass
 import torch
 
+SUPPORTED_DATASETS = [
+    "mnist",
+    "cifar10", 
+    "cifar100",
+    "imagenet",
+    "shakespeare",
+    "fineweb"
+]
+
+SUPPORTED_ARCHITECTURES = [
+    "mlp",
+    "cnn",
+    "resnet",
+    "vit", 
+    "gpt",
+    "transformer"
+]
+
 @dataclass
 class TrainingConfig:
     seed: int = 53
@@ -11,4 +29,7 @@ class TrainingConfig:
     validate_every: int = 10
     learning_rate: float = 0.001
     dataset_names = ["fineweb"]
+    architectures = {
+        "fineweb": ["mlp"]
+    }
     llm_validation_steps = 50

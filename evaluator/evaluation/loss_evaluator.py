@@ -4,8 +4,10 @@ from torch.utils.data import DataLoader
 from typing import Dict, List, Callable
 from tqdm import tqdm
 import logging
+
 from evaluator.eval_config import TrainingConfig
 from evaluator.evaluation.metrics import MetricsEvaluator
+from evaluator.models.model_factory import get_model_for_dataset
 
 class LossEvaluator:
     def __init__(self, config: TrainingConfig):
@@ -147,3 +149,25 @@ class LossEvaluator:
         metrics['batch_numbers'].append(batch_counter)
         model.train()
         return metrics
+    
+
+
+    def evaluate_combinations(self):
+        results = {}
+        for dataset in self.config.datasets:
+            results[dataset] = {}
+            train_loader, val_loader = self.get_data(dataset)
+            
+            for arch in self.config.architectures:
+                model = get_model_for_dataset(arch, dataset)
+                model = model.to("cuda" if torch.cuda.is_available() else "cpu")
+                
+                metrics = self.train_and_evaluate(
+                    model=model,
+                    loss_function=torch.nn.CrossEntropyLoss(),
+                    train_loader=train_loader,
+                    val_loader=val_loader
+                )
+                results[dataset][arch] = metrics
+                
+        return results

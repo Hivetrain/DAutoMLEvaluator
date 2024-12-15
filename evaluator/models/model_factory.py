@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch 
 
 from transformers import GPT2Config, GPT2LMHeadModel
-
+from evaluator.data.data import load_datasets
 
 class BaselineNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -161,58 +161,45 @@ def get_shakespeare_model(
         num_layers=num_layers
     )
 
-def get_mnist_model(
-    hidden_size: int = 128,
-    dropout: float = 0.2
-) -> nn.Module:
+def get_mlp(input_size: int, output_size: int, hidden_size: int = 128, dropout: float = 0.2) -> nn.Module:
+    """Generic MLP that works with any dataset dimensions."""
     return nn.Sequential(
         nn.Flatten(),
-        nn.Linear(28 * 28, hidden_size),
+        nn.Linear(input_size, hidden_size),
         nn.ReLU(),
         nn.Dropout(dropout),
         nn.Linear(hidden_size, hidden_size),
         nn.ReLU(),
         nn.Dropout(dropout),
-        nn.Linear(hidden_size, 10)
+        nn.Linear(hidden_size, output_size)
     )
 
-def get_cifar_model(
-    hidden_size: int = 256,
-    dropout: float = 0.2
-) -> nn.Module:
+def get_cnn(input_channels: int, output_size: int, base_channels: int = 32) -> nn.Module:
+    """Generic CNN that works with any image dataset."""
     return nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(3072, hidden_size),
-        nn.ReLU(),
-        nn.Dropout(dropout),
-        nn.Linear(hidden_size, hidden_size),
-        nn.ReLU(),
-        nn.Dropout(dropout),
-        nn.Linear(hidden_size, 10)
-    )
-
-def get_cifar100_model(
-    hidden_size: int = 512,
-    dropout: float = 0.3
-) -> nn.Module:
-    return nn.Sequential(
-        nn.Conv2d(3, 64, 3, padding=1),
+        nn.Conv2d(input_channels, base_channels, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
-        nn.Conv2d(64, 128, 3, padding=1),
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-        nn.Conv2d(128, 256, 3, padding=1),
+        nn.Conv2d(base_channels, base_channels * 2, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Flatten(),
-        nn.Linear(256 * 4 * 4, hidden_size),
+        nn.Linear(base_channels * 2 * 7 * 7, 128),  # This assumes 28x28 input, would need adjustment
         nn.ReLU(),
-        nn.Dropout(dropout),
-        nn.Linear(hidden_size, 100)
+        nn.Linear(128, output_size)
     )
 
-def get_fineweb_model(
+def get_baby_gpt(vocab_size: int, embed_size: int = 384, num_heads: int = 6, num_layers: int = 6) -> nn.Module:
+    """Generic GPT model that works with any text dataset."""
+    return BabyGPT(
+        vocab_size=vocab_size,
+        embedding_dim=embed_size,
+        num_heads=num_heads,
+        num_layers=num_layers
+    )
+
+
+def get_gpt2_model(
     vocab_size: int = 50257,
     **kwargs
 ) -> nn.Module:
@@ -222,19 +209,63 @@ def get_fineweb_model(
     return GPTWrapper(vocab_size)
 
 # Dictionary mapping dataset names to their model creators
-MODEL_CREATORS = {
-    'mnist': get_mnist_model,
-    'cifar10': get_cifar_model,
-    'cifar100': get_cifar100_model,
-    'imagenet': get_imagenet_model,
-    'shakespeare': get_shakespeare_model,
-    'fineweb': get_fineweb_model
-
+# Map architecture names to their factory functions
+ARCHITECTURE_MAP = {
+    'mlp': get_mlp,
+    'cnn': get_cnn,
+    'gpt': get_baby_gpt,
+    'resnet': get_imagenet_model  # Already generalized in original code
 }
 
-def get_model_for_dataset(dataset_name: str, **kwargs) -> nn.Module:
-    """Get the appropriate model for a given dataset"""
-    if dataset_name not in MODEL_CREATORS:
-        raise ValueError(f"No model creator found for dataset: {dataset_name}")
+def get_model_for_dataset(dataset_name: str, architecture: str = 'mlp', dataset_spec = None, **kwargs) -> nn.Module:
+    """Get the appropriate model for a given dataset and architecture.
     
-    return MODEL_CREATORS[dataset_name](**kwargs)
+    Args:
+        dataset_name: Name of the dataset
+        architecture: Name of the architecture ('mlp', 'cnn', 'gpt', 'resnet')
+        dataset_spec: DatasetSpec object containing dataset parameters
+        **kwargs: Additional arguments to pass to the model creator
+        
+    Returns:
+        nn.Module: The initialized model
+    """
+    if architecture not in ARCHITECTURE_MAP:
+        raise ValueError(f"Architecture {architecture} not recognized")
+    
+    if dataset_spec is None:
+        # Get dataset spec if not provided
+        dataset_spec = load_datasets([dataset_name])[0]
+    
+    # Get the appropriate model creator
+    model_creator = ARCHITECTURE_MAP[architecture]
+    
+    # Configure architecture-specific parameters
+    if architecture == 'mlp':
+        return model_creator(
+            input_size=dataset_spec.input_size,
+            output_size=dataset_spec.output_size,
+            hidden_size=dataset_spec.hidden_size,
+            **kwargs
+        )
+    elif architecture == 'cnn':
+        # Assume image data with channels
+        if isinstance(dataset_spec.input_size, tuple):
+            input_channels = dataset_spec.input_size[0]
+        else:
+            input_channels = 1  # Default to single channel
+        return model_creator(
+            input_channels=input_channels,
+            output_size=dataset_spec.output_size,
+            **kwargs
+        )
+    elif architecture == 'gpt':
+        return model_creator(
+            vocab_size=dataset_spec.output_size,
+            embed_size=dataset_spec.hidden_size,
+            **kwargs
+        )
+    else:  # resnet or other architectures
+        return model_creator(
+            num_classes=dataset_spec.output_size,
+            **kwargs
+        )

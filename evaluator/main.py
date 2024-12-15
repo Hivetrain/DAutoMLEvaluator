@@ -54,37 +54,39 @@ class LossFunctionEvaluator:
 
     def evaluate_loss_functions(self, json_folder: str) -> None:
         """Evaluate multiple loss functions from JSON files."""
-        for dataset in self.config.dataset_names:
+        for dataset in self.config.architectures.keys():
             train_loader, val_loader = self.data_manager.load_data(dataset)
+            for architecture in self.config.architectures[dataset]:
+                for filename in tqdm(os.listdir(json_folder)):
+                    if filename.endswith('.json'):
+                        self._evaluate_single_loss(
+                            os.path.join(json_folder, filename),
+                            train_loader,
+                            val_loader,
+                            dataset, 
+                            architecture
+                        )
 
-            # for filename in tqdm(os.listdir(json_folder)):
-            #     if filename.endswith('.json'):
-            #         self._evaluate_single_loss(
-            #             os.path.join(json_folder, filename),
-            #             train_loader,
-            #             val_loader,
-            #             dataset
-            #         )
-
-            self._evaluate_baseline_losses(train_loader, val_loader, dataset)
-        
-            # Update visualization call:
+                self._evaluate_baseline_losses(train_loader, val_loader, dataset,architecture)
             
-            self.visualizer.create_plots(
-                [{"filename": result.name, "validation_accuracy": result.accuracy_progression} 
-                for result in self.results_handler.results]
-            )
-            
-            # Add JSON output generation:
-            output_file = f"evaluation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            self.results_handler.generate_json_output(output_file)
+                # Update visualization call:
+                
+                self.visualizer.create_plots(
+                    [{"filename": result.name, "validation_accuracy": result.accuracy_progression} 
+                    for result in self.results_handler.results]
+                )
+                
+                # Add JSON output generation:
+                output_file = f"evaluation_results_{dataset}_{architecture}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                self.results_handler.generate_json_output(output_file)
 
     def _evaluate_single_loss(
         self,
         file_path: str,
         train_loader: DataLoader,
         val_loader: DataLoader,
-        dataset: str
+        dataset: str,
+        arch: str
     ) -> Dict[str, Any]:
         """Evaluate a single loss function from a JSON file."""
         try:
@@ -95,7 +97,7 @@ class LossFunctionEvaluator:
                 toolbox=self.toolbox
             )
             
-            model = get_model_for_dataset(dataset)
+            model = get_model_for_dataset(dataset, arch)
             model.to(self.config.device)
             if dataset == "shakespeare":
                 metrics = self.evaluator.train_and_evaluate(
@@ -107,7 +109,7 @@ class LossFunctionEvaluator:
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, metric_type="loss"
+                    model, loss_function, train_loader, val_loader, metric_type="accuracy"
                 )
             
             # Add results processing:
@@ -138,7 +140,8 @@ class LossFunctionEvaluator:
         self,
         train_loader: DataLoader,
         val_loader: DataLoader,
-        dataset: str
+        dataset: str,
+        arch: str
     ) -> List[Dict[str, Any]]:
         """Evaluate baseline loss functions (MSE and Cross-Entropy)."""
         baseline_losses = {
@@ -149,7 +152,7 @@ class LossFunctionEvaluator:
 
         for loss_name, loss_fn in baseline_losses.items():
             torch.manual_seed(self.config.seed)
-            model = get_model_for_dataset(dataset)
+            model = get_model_for_dataset(dataset, arch)
             model.to(self.config.device)
             
             #try:
@@ -181,6 +184,7 @@ class LossFunctionEvaluator:
             )
             # except:
             #     continue
+
 
 
 def main():
