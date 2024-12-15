@@ -57,6 +57,9 @@ class LossFunctionEvaluator:
         for dataset in self.config.architectures.keys():
             train_loader, val_loader = self.data_manager.load_data(dataset)
             for architecture in self.config.architectures[dataset]:
+
+                self.results_handler = ResultsHandler()  
+
                 for filename in tqdm(os.listdir(json_folder)):
                     if filename.endswith('.json'):
                         self._evaluate_single_loss(
@@ -171,7 +174,7 @@ class LossFunctionEvaluator:
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, metric_type="loss"
+                    model, loss_function, train_loader, val_loader, metric_type="accuracy"
                 )
 
             
