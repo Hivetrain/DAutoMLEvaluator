@@ -6,7 +6,7 @@ import torch
 
 from transformers import GPT2Config, GPT2LMHeadModel
 from evaluator.data.data import load_datasets
-from typing import Tuple, Union
+from typing import Union, Tuple
 
 class BaselineNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
@@ -128,152 +128,6 @@ class BabyGPT(nn.Module):
         logits = self.fc_out(x)
         return logits
 
-class PatchEmbed(nn.Module):
-    """Split image into patches and embed them."""
-    def __init__(self, img_size: int, patch_size: int, in_chans: int = 3, embed_dim: int = 768):
-        super().__init__()
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.n_patches = (img_size // patch_size) ** 2
-        
-        self.proj = nn.Conv2d(
-            in_chans,
-            embed_dim,
-            kernel_size=patch_size,
-            stride=patch_size
-        )
-
-    def forward(self, x):
-        x = self.proj(x)  # (B, E, H', W')
-        x = x.flatten(2)  # (B, E, N)
-        x = x.transpose(1, 2)  # (B, N, E)
-        return x
-
-class ViT(nn.Module):
-    def __init__(
-        self,
-        img_size: int,
-        patch_size: int,
-        in_chans: int,
-        num_classes: int,
-        embed_dim: int,
-        depth: int,
-        num_heads: int,
-        mlp_ratio: float = 4.0,
-        dropout: float = 0.1
-    ):
-        super().__init__()
-        self.patch_embed = PatchEmbed(
-            img_size=img_size,
-            patch_size=patch_size,
-            in_chans=in_chans,
-            embed_dim=embed_dim
-        )
-        num_patches = self.patch_embed.n_patches
-
-        # Class token and position embeddings
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
-        
-        # Transformer encoder
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=embed_dim,
-            nhead=num_heads,
-            dim_feedforward=int(embed_dim * mlp_ratio),
-            dropout=dropout,
-            batch_first=True
-        )
-        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=depth)
-        
-        # MLP head
-        self.head = nn.Linear(embed_dim, num_classes)
-
-    def forward(self, x):
-        # Patch embedding
-        x = self.patch_embed(x)
-        
-        # Add class token
-        cls_token = self.cls_token.expand(x.shape[0], -1, -1)
-        x = torch.cat((cls_token, x), dim=1)
-        
-        # Add position embeddings
-        x = x + self.pos_embed
-        
-        # Transformer
-        x = self.transformer(x)
-        
-        # MLP head (use [CLS] token)
-        x = self.head(x[:, 0])
-        return x
-
-def get_vit(
-    input_size: Union[Tuple[int, int, int], int],
-    output_size: int,
-    variant: str = 'base',
-    **kwargs
-) -> nn.Module:
-    """Create a Vision Transformer model.
-    
-    Args:
-        input_size: Either tuple of (channels, height, width) or flat size
-        output_size: Number of classes
-        variant: 'small', 'base', or 'large'
-    """
-    # Handle input size formatting
-    if isinstance(input_size, int):
-        # Infer image dimensions based on flat size
-        if input_size == 28 * 28:  # MNIST
-            in_chans, height, width = 1, 28, 28
-        elif input_size == 32 * 32 * 3:  # CIFAR
-            in_chans, height, width = 3, 32, 32
-        else:
-            raise ValueError(f"Cannot infer image dimensions from flat size {input_size}")
-    else:
-        in_chans, height, width = input_size
-
-    # ViT configurations following paper specifications
-    configs = {
-        'small': {
-            'patch_size': 4 if height <= 32 else 16,  # Smaller patch size for small images
-            'embed_dim': 384,
-            'depth': 12,
-            'num_heads': 6,
-        },
-        'base': {
-            'patch_size': 4 if height <= 32 else 16,
-            'embed_dim': 768,
-            'depth': 12,
-            'num_heads': 12,
-        },
-        'large': {
-            'patch_size': 4 if height <= 32 else 16,
-            'embed_dim': 1024,
-            'depth': 24,
-            'num_heads': 16,
-        }
-    }
-    
-    if variant not in configs:
-        raise ValueError(f"Unknown ViT variant: {variant}")
-    
-    config = configs[variant]
-    
-    # Ensure image size is compatible with patch size
-    assert height == width, "Image must be square"
-    assert height % config['patch_size'] == 0, f"Image size {height} must be divisible by patch size {config['patch_size']}"
-    
-    return ViT(
-        img_size=height,
-        patch_size=config['patch_size'],
-        in_chans=in_chans,
-        num_classes=output_size,
-        embed_dim=config['embed_dim'],
-        depth=config['depth'],
-        num_heads=config['num_heads'],
-        **kwargs
-    )
-
-
 
 def get_imagenet_model(
     num_classes: int = 1000,
@@ -321,46 +175,20 @@ def get_mlp(input_size: int, output_size: int, hidden_size: int = 128, dropout: 
         nn.Linear(hidden_size, output_size)
     )
 
-def get_cnn(input_size: Tuple[int, int, int], output_size: int, base_channels: int = 32) -> nn.Module:
-    """Generic CNN that works with any image dataset.
-    
-    Args:
-        input_size: Tuple of (channels, height, width)
-        output_size: Number of classes
-        base_channels: Number of base channels (will be doubled in deeper layers)
-    """
-    in_channels, height, width = input_size
-    
-    def calc_conv_output(size, kernel=3, stride=1, padding=1):
-        return ((size + 2 * padding - kernel) // stride) + 1
-    
-    def calc_pool_output(size, kernel=2, stride=2):
-        return size // stride
-    
-    # Calculate size after first conv + pool
-    conv1_size = calc_conv_output(height)
-    pool1_size = calc_pool_output(conv1_size)
-    
-    # Calculate size after second conv + pool
-    conv2_size = calc_conv_output(pool1_size)
-    pool2_size = calc_pool_output(conv2_size)
-    
-    # Calculate flattened size
-    flat_size = (base_channels * 2) * pool2_size * pool2_size
-
+def get_cnn(input_channels: int, output_size: int, base_channels: int = 32) -> nn.Module:
+    """Generic CNN that works with any image dataset."""
     return nn.Sequential(
-        nn.Conv2d(in_channels, base_channels, kernel_size=3, padding=1),
+        nn.Conv2d(input_channels, base_channels, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
-        nn.Conv2d(base_channels, base_channels * 2, kernel_size=3, padding=1),
+        nn.Conv2d(base_channels, base_channels * 2, 3, padding=1),
         nn.ReLU(),
         nn.MaxPool2d(2),
         nn.Flatten(),
-        nn.Linear(flat_size, 128),
+        nn.Linear(base_channels * 2 * 7 * 7, 128),  # This assumes 28x28 input, would need adjustment
         nn.ReLU(),
         nn.Linear(128, output_size)
     )
-
 
 def get_baby_gpt(vocab_size: int, embed_size: int = 384, num_heads: int = 6, num_layers: int = 6) -> nn.Module:
     """Generic GPT model that works with any text dataset."""
@@ -387,14 +215,21 @@ ARCHITECTURE_MAP = {
     'mlp': get_mlp,
     'cnn': get_cnn,
     'gpt': get_baby_gpt,
-    'resnet': get_imagenet_model,  # Already generalized in original code
-    'vit-small': lambda *args, **kwargs: get_vit(*args, variant='small', **kwargs),
-    'vit-base': lambda *args, **kwargs: get_vit(*args, variant='base', **kwargs),
-    'vit-large': lambda *args, **kwargs: get_vit(*args, variant='large', **kwargs)
-    }
+    'resnet': get_imagenet_model  # Already generalized in original code
+}
 
 def get_model_for_dataset(dataset_name: str, architecture: str = 'mlp', dataset_spec = None, **kwargs) -> nn.Module:
-    """Get the appropriate model for a given dataset and architecture."""
+    """Get the appropriate model for a given dataset and architecture.
+    
+    Args:
+        dataset_name: Name of the dataset
+        architecture: Name of the architecture ('mlp', 'cnn', 'gpt', 'resnet')
+        dataset_spec: DatasetSpec object containing dataset parameters
+        **kwargs: Additional arguments to pass to the model creator
+        
+    Returns:
+        nn.Module: The initialized model
+    """
     if architecture not in ARCHITECTURE_MAP:
         raise ValueError(f"Architecture {architecture} not recognized")
     
@@ -413,24 +248,24 @@ def get_model_for_dataset(dataset_name: str, architecture: str = 'mlp', dataset_
             hidden_size=dataset_spec.hidden_size,
             **kwargs
         )
-    elif architecture in ['cnn', 'vit-small', 'vit-base', 'vit-large']:
-        # Handle case where input_size is a single number
-        if isinstance(dataset_spec.input_size, int):
-            if dataset_name == 'mnist':
-                input_size = (1, 28, 28)  # MNIST is single channel
-            elif dataset_name in ['cifar10', 'cifar100']:
-                input_size = (3, 32, 32)  # CIFAR is RGB
-            else:
-                raise ValueError(f"Cannot determine image dimensions for dataset {dataset_name}")
+    elif architecture == 'cnn':
+        # Assume image data with channels
+        if isinstance(dataset_spec.input_size, tuple):
+            input_channels = dataset_spec.input_size[0]
         else:
-            input_size = dataset_spec.input_size
-            
+            input_channels = 1  # Default to single channel
         return model_creator(
-            input_size=input_size,
+            input_channels=input_channels,
             output_size=dataset_spec.output_size,
             **kwargs
         )
-    else:  # gpt, resnet, or other architectures
+    elif architecture == 'gpt':
+        return model_creator(
+            vocab_size=dataset_spec.output_size,
+            embed_size=dataset_spec.hidden_size,
+            **kwargs
+        )
+    else:  # resnet or other architectures
         return model_creator(
             num_classes=dataset_spec.output_size,
             **kwargs
