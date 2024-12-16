@@ -22,7 +22,7 @@ class DatasetSpec:
 
 def get_mnist_loaders(
     batch_size: int = 32,
-    num_workers: int = 2
+    num_workers: int = 0
 ) -> Tuple[DataLoader, DataLoader]:
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -49,7 +49,7 @@ def get_mnist_loaders(
 
 def get_cifar10_loaders(
     batch_size: int = 32,
-    num_workers: int = 2
+    num_workers: int = 0
 ) -> Tuple[DataLoader, DataLoader]:
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -76,7 +76,7 @@ def get_cifar10_loaders(
 
 def get_cifar100_loaders(
     batch_size: int = 32,
-    num_workers: int = 2
+    num_workers: int = 0
 ) -> Tuple[DataLoader, DataLoader]:
     transform = transforms.Compose([
         transforms.ToTensor(),
