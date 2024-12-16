@@ -92,51 +92,55 @@ class LossFunctionEvaluator:
         arch: str
     ) -> Dict[str, Any]:
         """Evaluate a single loss function from a JSON file."""
-        try:
-            torch.manual_seed(self.config.seed)
-            individual, loss_function, loss_str = load_individual_from_json(
-                filename=file_path,
-                pset=self.pset,
-                toolbox=self.toolbox
+        #try
+        torch.manual_seed(self.config.seed)
+        individual, loss_function, loss_str = load_individual_from_json(
+            filename=file_path,
+            pset=self.pset,
+            toolbox=self.toolbox
+        )
+        
+        model = get_model_for_dataset(dataset, arch)
+        model.to(self.config.device)
+        if dataset == "shakespeare":
+            metrics = self.evaluator.train_and_evaluate(
+                model, loss_function, train_loader, val_loader, num_classes=85, metric_type="loss"
             )
-            
-            model = get_model_for_dataset(dataset, arch)
-            model.to(self.config.device)
-            if dataset == "shakespeare":
-                metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, num_classes=85, metric_type="loss"
-                )
-            elif dataset == "fineweb":
-                metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, num_classes=50257, metric_type="loss"
-                )
-            else:
-                metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, metric_type="accuracy"
-                )
-            
-            # Add results processing:
-            self.results_handler.process_evaluation_metrics(
-                name=os.path.basename(file_path),
-                metrics=metrics,
-                function_str=str(individual),
-                total_batches=len(train_loader),
-                epochs=self.config.epochs
+        elif dataset == "fineweb":
+            metrics = self.evaluator.train_and_evaluate(
+                model, loss_function, train_loader, val_loader, num_classes=50257, metric_type="loss"
             )
-        except Exception as e:
-            print(e)
-            metrics = {
-                'train_loss': [99],
-                'val_accuracy': [0.0],
-                'batch_numbers': [1]
-            }
-            self.results_handler.process_evaluation_metrics(
-                name=os.path.basename(file_path),
-                metrics=metrics,
-                function_str=None,
-                total_batches=len(train_loader),
-                epochs=self.config.epochs
+        elif dataset == "cifar100":
+            metrics = self.evaluator.train_and_evaluate(
+                model, loss_function, train_loader, val_loader, num_classes=100, metric_type="loss"
+            )            
+        else:
+            metrics = self.evaluator.train_and_evaluate(
+                model, loss_function, train_loader, val_loader, metric_type="accuracy"
             )
+        
+        # Add results processing:
+        self.results_handler.process_evaluation_metrics(
+            name=os.path.basename(file_path),
+            metrics=metrics,
+            function_str=str(individual),
+            total_batches=len(train_loader),
+            epochs=self.config.epochs
+        )
+        # except Exception as e:
+        #     print(e)
+        #     metrics = {
+        #         'train_loss': [99],
+        #         'val_accuracy': [0.0],
+        #         'batch_numbers': [1]
+        #     }
+        #     self.results_handler.process_evaluation_metrics(
+        #         name=os.path.basename(file_path),
+        #         metrics=metrics,
+        #         function_str=None,
+        #         total_batches=len(train_loader),
+        #         epochs=self.config.epochs
+        #     )
 
 
     def _evaluate_baseline_losses(
@@ -171,6 +175,10 @@ class LossFunctionEvaluator:
             elif dataset == "fineweb":
                 metrics = self.evaluator.train_and_evaluate(
                     model, loss_function, train_loader, val_loader, num_classes=50257, metric_type="loss"
+                )
+            elif dataset == "cifar100":
+                metrics = self.evaluator.train_and_evaluate(
+                    model, loss_function, train_loader, val_loader, num_classes=100, metric_type="loss"
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
