@@ -112,7 +112,7 @@ class LossFunctionEvaluator:
             )
         elif dataset == "cifar100":
             metrics = self.evaluator.train_and_evaluate(
-                model, loss_function, train_loader, val_loader, num_classes=100, metric_type="loss"
+                model, loss_function, train_loader, val_loader, num_classes=100, metric_type="accuracy"
             )            
         else:
             metrics = self.evaluator.train_and_evaluate(
@@ -178,7 +178,7 @@ class LossFunctionEvaluator:
                 )
             elif dataset == "cifar100":
                 metrics = self.evaluator.train_and_evaluate(
-                    model, loss_function, train_loader, val_loader, num_classes=100, metric_type="loss"
+                    model, loss_function, train_loader, val_loader, num_classes=100, metric_type="accuracy"
                 )
             else:
                 metrics = self.evaluator.train_and_evaluate(
